@@ -37,6 +37,7 @@
 int button=0;
 int x=1904;
 int y=1904;
+char *lastUsedName="ENTER";
 
 #define UP 1
 #define DOWN 2
@@ -184,20 +185,21 @@ static int sendkeycode(int k)
 */
 enum buttons     {btUp, btDown, btLeft, btRight, btEnter, btPhoto, btLongUp, btLongDown, btLongLeft, btLongRight};
 char *btname[] = {"UP", "DOWN", "LEFT", "RIGHT", "ENTER", "PHOTO", "LONGUP", "LONGDOWN", "LONGLEFT", "LONGRIGHT"};
-int btcodes[] =  {AKEYCODE_DPAD_UP,         //btUp
-                  AKEYCODE_DPAD_DOWN,       //btDown
-                  AKEYCODE_DPAD_LEFT,       //btLeft
-                  AKEYCODE_DPAD_RIGHT,      //btRight
-                  AKEYCODE_ENTER,           //btEnter
-                  AKEYCODE_CAMERA,          //btPhoto
-                  AKEYCODE_CALL,            //btLongUp
-                  AKEYCODE_MUTE,            //btLongDown
-                  AKEYCODE_MEDIA_PREVIOUS,  //btLongLeft
-                  AKEYCODE_MEDIA_NEXT       //btLongRight
+int btcodes[] =  {AKEYCODE_DPAD_UP,         		//btUp
+                  AKEYCODE_DPAD_DOWN,       		//btDown
+                  AKEYCODE_DPAD_LEFT,       		//btLeft
+                  AKEYCODE_DPAD_RIGHT,      		//btRight
+                  AKEYCODE_ENTER,           		//btEnter
+                  AKEYCODE_BACK,          			//btPhoto
+                  AKEYCODE_VOLUME_UP,            	//btLongUp
+                  AKEYCODE_VOLUME_DOWN,           	//btLongDown
+                  AKEYCODE_MEDIA_PREVIOUS,  		//btLongLeft
+                  AKEYCODE_MEDIA_NEXT       		//btLongRight
                   };
 
 void dobutton(enum buttons b) {
     printf(":%s\n",btname[b]);
+	lastUsedName=btname[b];
     sendkeycode(btcodes[b]);
 }
 
@@ -208,13 +210,13 @@ void dobutton(enum buttons b) {
 void setx(struct input_event *ev) 
 {
   if (button) {
-    if (ev->value>x) {
+    if (ev->value<0) {
       debugln("right\n");
-      direction=LEFT;
+      direction=RIGHT;
     }  
-    if (ev->value<x) {
+    if (ev->value>0) {
       debugln("left\n");
-      direction=RIGHT; 
+      direction=LEFT; 
     }   
   }
   x=ev->value;
@@ -232,30 +234,24 @@ void sety(struct input_event *ev)
 {
   struct timeval timediff;
   if (button) {
-    if (ev->value>y) {
-      debugln("down\n");
+    if (ev->value>0) {
+      debugln("up\n");
       direction=UP;
     }
-    if (ev->value<y) {
-      debugln("up\n");
+    if (ev->value<0) {
+      debugln("down\n");
       direction=DOWN; 
     }   
   }
   y=ev->value;
   debugln("y now is %d\n",y);
-  if (x==2048 && button) {
-     //to avoid repetitions only use the first event (depending on y)
-     if (y==784)
-       dobutton(btLongUp);
-     if (y==2912)
-       dobutton(btLongDown);  
-  }
 }
 
 /*
  Checks the elapsed time between two timestamps
  
 */
+/*
 bool lapsed(struct timeval *then, struct timeval *now, long secs, long usecs) {
 
   struct timeval timediff;
@@ -266,6 +262,7 @@ bool lapsed(struct timeval *then, struct timeval *now, long secs, long usecs) {
     return false;
   return timediff.tv_usec>=usecs;    
 }
+*/
 
 /*
  Register button presses and releases
@@ -279,18 +276,18 @@ bool lapsed(struct timeval *then, struct timeval *now, long secs, long usecs) {
 */
  
 void setbutton(struct input_event *ev) {
-  if (ev->value!=button) {
+  if (ev->code==BTN_LEFT && ev->value!=button) {
     button=ev->value;
     if (button>0) {
       debugln("button press\n");
       direction=0;
     } else {
       debugln("button release\n");
-      if ( x==1904 && y==1904) {
+      if ( x==148 && y==-375) {
         dobutton(btEnter);
         return;
       } 
-      if ( x==1536 && y==608) {
+      if ( x==148 && y==-35) {
         dobutton(btPhoto);
         return;
       }
@@ -303,16 +300,41 @@ void setbutton(struct input_event *ev) {
         dobutton(btLeft);
         return;
       } 
-      //when x is 2048 it's a long press, don't report normal up/down
-      if (x!=2048 && direction==UP) {
+      if (direction==UP) {
         dobutton(btUp);
         return;
       }
-      if (x!=2048 && direction==DOWN) {
+      if (direction==DOWN) {
         dobutton(btDown);
         return;
       } 
     }
+  }
+  if (ev->code==KEY_VOLUMEDOWN && ev->value==0) {
+	if (lastUsedName!="PHOTO") {
+	  dobutton(btLongDown);
+	  return;
+	} else {
+	  lastUsedName="LONGDOWN";
+	  return;
+	}
+  }
+  if (ev->code==KEY_VOLUMEUP && ev->value==0) {
+	if (lastUsedName!="PHOTO") {
+	  dobutton(btLongUp);
+      return;
+	} else {
+	  lastUsedName="LONGUP";
+	  return;
+	}
+  }
+  if (ev->code==KEY_POWER && ev->value==0) {
+	dobutton(btLongLeft);
+    return;
+  }
+  if (ev->code==KEY_HOMEPAGE && ev->value==0) {
+	dobutton(btLongRight);
+    return;
   }
 }
 
@@ -324,7 +346,8 @@ void setbutton(struct input_event *ev) {
  here we're using the elapsed time to only report the first repetition.
  
 */
- 
+
+/* 
 #define LONGLEFT 0
 #define LONGRIGHT 1
 void longpress(struct input_event* ev, int index) {
@@ -346,6 +369,7 @@ void longpress(struct input_event* ev, int index) {
            
     }   
 }
+*/
 
 /*
  Main
@@ -373,23 +397,18 @@ int main(int argc, char **argv)
         debugln("ts %10ld.%10ld type %d code %d value %d\n",ie.time.tv_sec,ie.time.tv_usec,ie.type, ie.code, ie.value);
         
         switch(ie.type) {
-          case EV_ABS:
+          case EV_REL:
             switch(ie.code) {
-              case ABS_X:
+              case REL_X:
                 setx(&ie);
                 break;
-              case ABS_Y:
+              case REL_Y:
                 sety(&ie);
                 break;  
             }
             break;
-          case EV_KEY:
-            if (ie.code==BTN_TOOL_PEN) 
+          case EV_KEY: // 272, 114, 115, 116, 172
               setbutton(&ie);
-            if (ie.value==1) {
-              longpress(&ie, LONGLEFT);
-              longpress(&ie, LONGRIGHT); 
-            }  
             break;  
         }
     }
