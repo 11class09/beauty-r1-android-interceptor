@@ -1,10 +1,11 @@
 # Beauty-R1 android interceptor
 
+<ins>Code changes in this fork are tailored to the specific Bluetooth remote's behavior.</ins>
 
 The Beauty-R1 is a bluetooth clicker that I bought thinking
 it would emulate a bluetooth keyboard.
 
-[<img src="beauty.png" />](./beauty.png)
+[<img src="beauty-R1.png" width="200"/>](./beauty-R1.png)
 
 It turns out that it emulates a mouse instead: when you press a button,
 it simulates dragging the mouse pointer, not useful for what I need.
@@ -27,6 +28,12 @@ then I can push it to the tablet
 
 ```
 adb push beauty /data/local/tmp/beauty
+```
+
+In some cases, permission changes are required
+
+```
+adb shell chmod 755 /data/local/tmp/beauty
 ```
 
 You can test it via adb shell either running
